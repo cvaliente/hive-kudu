@@ -1,0 +1,27 @@
+apply plugin: 'java'
+
+description = "kudu SerDe for Hive"
+
+
+ext.deps = [
+        hadoopVersion:'2.6.0-cdh5.14.4',
+        hiveVersion:'2.1.1',
+        kuduVersion:'1.7.0',
+]
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    compile group: 'org.apache.kudu', name: 'kudu-mapreduce', version: deps.kuduVersion
+
+    compileOnly group: 'org.apache.hive', name: 'hive-exec', version: deps.hiveVersion, classifier: 'core'
+    compileOnly group: 'org.apache.hive', name: 'hive-metastore', version: deps.hiveVersion
+    compileOnly group: 'org.apache.hadoop', name: 'hadoop-common', version: deps.hadoopVersion
+    compileOnly group: 'org.apache.hadoop', name: 'hadoop-mapreduce-client-common', version: deps.hadoopVersion
+
+    testCompile group: 'junit', name: 'junit', version:'4.12'
+    testCompile group: 'org.apache.hive', name: 'hive-exec', version: deps.hiveVersion, classifier: 'core'
+}
