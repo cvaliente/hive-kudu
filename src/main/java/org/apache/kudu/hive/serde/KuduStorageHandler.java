@@ -17,20 +17,16 @@
 
 package org.apache.kudu.hive.serde;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
+import static org.apache.kudu.hive.serde.HiveKuduConstants.KEY_COLUMNS;
+
 import java.util.Map;
 import java.util.Properties;
-import org.apache.commons.lang3.StringUtils;
+import java.util.stream.Collectors;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.metastore.HiveMetaHook;
 import org.apache.hadoop.hive.metastore.MetaStoreUtils;
-import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.ql.metadata.DefaultStorageHandler;
@@ -40,19 +36,12 @@ import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.TableDesc;
 import org.apache.hadoop.hive.ql.security.authorization.DefaultHiveAuthorizationProvider;
 import org.apache.hadoop.hive.ql.security.authorization.HiveAuthorizationProvider;
-import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.AbstractSerDe;
 import org.apache.hadoop.hive.serde2.Deserializer;
-import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputFormat;
 import org.apache.kudu.ColumnSchema;
-import org.apache.kudu.ColumnSchema.ColumnSchemaBuilder;
-import org.apache.kudu.ColumnTypeAttributes;
-import org.apache.kudu.ColumnTypeAttributes.ColumnTypeAttributesBuilder;
-import org.apache.kudu.Schema;
-import org.apache.kudu.client.CreateTableOptions;
 import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.KuduException;
 import org.apache.kudu.hive.serde.input.KuduTableInputFormatWrapper;
@@ -194,7 +183,9 @@ public class KuduStorageHandler extends DefaultStorageHandler
       if (!client.tableExists(kuduTableName)) {
         throw new MetaException("Tried to create external table on non-existing Kudu table");
       }
-      client.openTable(kuduTableName).getPartitionSchema();
+      String keyColumns = client.openTable(kuduTableName).getSchema().getPrimaryKeyColumns()
+          .stream().map(ColumnSchema::getName).collect(Collectors.joining(","));
+      tbl.getParameters().put(KEY_COLUMNS, keyColumns);
     } catch (KuduException e) {
       throw new MetaException("Failed to connect to kudu" + e);
     }

@@ -20,7 +20,6 @@ Some other stuff is copied from twitter's elephantbird project like most of the 
 - Hive will write rows as Upserts to Kudu, inserting new Rows and potentially updating existing rows. Hive's ACID capabilities are not supported.
 - the Hive Table should not have any (Hive) partitions, since those column fields are not available to the record writer.
   This is not a big issue, Hive should be able to push down any filtering on partition columns to the Kudu Storage layer. 
-- Predicate Pushdown doesn't work right now, we need to retrieve the partition columns from kudu and store them in the HMS
 
 ## TODO
 - investigate if we can make the storage format compatible to impala's (so impala and hive can share the table)
