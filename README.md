@@ -42,7 +42,7 @@ CREATE TABLE if not exists cvaliente.test_drop (
 id INT,
 name STRING
 )
-stored by 'com.trivago.hive.serde.kudu.KuduStorageHandler'
+stored by 'KuduStorageHandler'
 TBLPROPERTIES(
   'kudu.table_name' = 'cvaliente_test_drop',
   'kudu.master_addresses' = 'mgmt0.hadoop.trivago.com:7051,mgmt1.hadoop.trivago.com:7051,mgmt2.hadoop.trivago.com:7051',
@@ -61,8 +61,8 @@ insert into test_drop values (1, 'a'), (2, 'b'), (3, 'a');
 ```sql
 create external table cvaliente.kudutest
 ROW FORMAT SERDE
-  'com.trivago.hive.serde.kudu.HiveKuduSerDe'
-stored by 'com.trivago.hive.serde.kudu.KuduStorageHandler'
+  'HiveKuduSerDe'
+stored by 'KuduStorageHandler'
 TBLPROPERTIES(
   'kudu.table_name' = 'original_kudu_name',
   'kudu.master_addresses' = 'mgmt0.hadoop.trivago.com:7051,mgmt1.hadoop.trivago.com:7051,mgmt2.hadoop.trivago.com:7051'

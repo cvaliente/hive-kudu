@@ -1,11 +1,22 @@
-apply plugin: 'java'
+buildscript {
+    repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "gradle.plugin.com.github.spotbugs:spotbugs-gradle-plugin:1.7.1"
+    }
+}
+
+apply plugin: "com.github.spotbugs"
+apply plugin: "java"
 
 description = "kudu SerDe for Hive"
 
-
 ext.deps = [
-        hadoopVersion:'2.6.0-cdh5.14.4',
-        hiveVersion:'2.1.1',
+        hadoopVersion:'3.2.0',
+        hiveVersion:'2.3.4',
         kuduVersion:'1.7.0',
 ]
 
