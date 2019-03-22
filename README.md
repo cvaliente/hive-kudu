@@ -32,7 +32,7 @@ Some other stuff is copied from twitter's elephantbird project like most of the 
   so we don't have access to the value of the partition fields in the writer/serializer)
   
 - Creating kudu tables
-- predicate pushdown for the IN () operator
+- predicate pushdown for the IN, NOT NULL, NULL, BETWEEN operator
 - UNIT TESTS!!
 - nice to have: SerDeStats (currently not available from kudu)
 - use the constants from the kudu-mapreduce package instead of redefining them in HiveKuduConstants 
