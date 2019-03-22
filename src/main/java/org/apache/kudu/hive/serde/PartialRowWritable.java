@@ -56,7 +56,7 @@ public class PartialRowWritable implements Writable {
     HiveKuduBridgeUtils.copyRowResultToPartialRow(rowResult, this.row, this.schema);
   }
 
-  // Writing our RartialRow into the PartialRow of the Operation that will be applied by the KuduRecordUpdater
+  // Writing our RartialRow into the PartialRow of the Operation that will be applied by the KuduRecordUpserter
   public void mergeInto(PartialRow out) throws IOException {
     HiveKuduBridgeUtils.copyPartialRowToPartialRow(this.row, out, this.schema);
   }

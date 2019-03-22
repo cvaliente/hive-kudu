@@ -21,8 +21,6 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter;
 import org.apache.hadoop.hive.ql.io.IOConstants;
-import org.apache.hadoop.hive.ql.io.RecordUpdater;
-import org.apache.hadoop.hive.serde2.SerDeStats;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.Reporter;
@@ -42,15 +40,14 @@ import org.apache.kudu.hive.serde.compat.ReporterWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class KuduRecordUpdater implements RecordWriter, RecordUpdater {
+public class KuduRecordUpserter implements RecordWriter {
 
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(KuduRecordUpdater.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(KuduRecordUpserter.class);
   private org.apache.hadoop.mapreduce.RecordWriter<NullWritable, Operation> realWriter;
   private KuduTable table;
   private KuduClient client;
 
-  KuduRecordUpdater(OutputFormat<NullWritable, Operation> realOutputFormat,
+  KuduRecordUpserter(OutputFormat<NullWritable, Operation> realOutputFormat,
       Configuration jobConf, Progressable progress)
       throws IOException {
 
@@ -83,20 +80,6 @@ public class KuduRecordUpdater implements RecordWriter, RecordUpdater {
     this.apply(table.newUpsert(), row);
   }
 
-  @Override
-  public void insert(long currentTransaction, Object row) throws IOException {
-    this.apply(table.newInsert(), row);
-  }
-
-  @Override
-  public void update(long currentTransaction, Object row) throws IOException {
-    this.apply(table.newUpdate(), row);
-  }
-
-  @Override
-  public void delete(long currentTransaction, Object row) throws IOException {
-    this.apply(table.newDelete(), row);
-  }
 
   private void apply(Operation operation, Object row) throws IOException {
 
@@ -113,11 +96,6 @@ public class KuduRecordUpdater implements RecordWriter, RecordUpdater {
     }
   }
 
-  @SuppressWarnings("RedundantThrows")
-  @Override
-  public void flush() throws IOException {
-  }
-
   @Override
   public void close(boolean abort) throws IOException {
     try {
@@ -128,10 +106,5 @@ public class KuduRecordUpdater implements RecordWriter, RecordUpdater {
     } catch (InterruptedException e) {
       throw new IOException(e);
     }
-  }
-
-  @Override
-  public SerDeStats getStats() {
-    return HiveKuduBridgeUtils.convertStatistics(client.getStatistics());
   }
 }

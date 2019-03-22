@@ -62,7 +62,7 @@ import org.apache.kudu.hive.serde.output.HiveKuduOutputFormat;
  * Created by bimal on 4/11/16.
  */
 
-@SuppressWarnings({"RedundantThrows", "deprecation"})
+@SuppressWarnings({"RedundantThrows"})
 public class KuduStorageHandler extends DefaultStorageHandler
     implements HiveMetaHook, HiveStoragePredicateHandler {
 
@@ -172,7 +172,6 @@ public class KuduStorageHandler extends DefaultStorageHandler
         tableName = tbl.getTableName().replaceAll(".*\\.", "");
         LOG.warn("Kudu Table name will be: " + tableName);
       }
-
     }
     return tableName;
   }
@@ -182,160 +181,44 @@ public class KuduStorageHandler extends DefaultStorageHandler
   public void preCreateTable(Table tbl)
       throws MetaException {
 
-    String kuduTableName = getKuduTableName(tbl);
-
-    KuduClient client = HiveKuduBridgeUtils
-        .getKuduClient(conf, tbl.getParameters().get(HiveKuduConstants.MASTER_ADDRESS_NAME));
     boolean isExternal = MetaStoreUtils.isExternalTable(tbl);
-    List<FieldSchema> tabColumns = tbl.getSd().getCols();
-
-    try {
-      boolean tableExists = client.tableExists(kuduTableName);
-      if (isExternal) {
-        if (!tableExists) {
-          throw new MetaException("Tried to create external table on non-existing Kudu table");
-        }
-        // our SerDe builds the ObjectInspector based on the column information stored in the Kudu MetaStore,
-        // so any columns in the create table statement will be ignored for External tables.
-        return;
-      } else if (tableExists) {
-        throw new MetaException("Tried to create non-external table on existing Kudu table");
-      }
-    } catch (KuduException e) {
-      throw new MetaException("Failed to connect to kudu" + e);
+    if (!isExternal) {
+      throw new MetaException("Creating non-external Hive Tables on Kudu Storage is not supported");
     }
 
-    int numberOfCols = tabColumns.size();
-
-    List<ColumnSchema> columns = new ArrayList<>(numberOfCols);
-    List<String> keyColumns = Arrays.asList(tbl.getParameters()
-        .get(HiveKuduConstants.KEY_COLUMNS).split("\\s*,\\s*"));
+    String kuduTableName = getKuduTableName(tbl);
+    KuduClient client = HiveKuduBridgeUtils
+        .getKuduClient(conf, tbl.getParameters().get(HiveKuduConstants.MASTER_ADDRESS_NAME));
 
     try {
-      for (FieldSchema fields : tabColumns) {
-
-        ColumnSchemaBuilder columnSchemaBuilder = new ColumnSchema
-            .ColumnSchemaBuilder(fields.getName(), HiveKuduBridgeUtils.hiveTypeToKuduType(fields.getType()))
-            .key(keyColumns.contains(fields.getName()))
-            .nullable(!keyColumns.contains(fields.getName()));
-
-        if (fields.getType().toLowerCase(Locale.US).startsWith(serdeConstants.DECIMAL_TYPE_NAME)) {
-          String fieldType = fields.getType().toLowerCase(Locale.US);
-          String[] decimal = fieldType.replace(serdeConstants.DECIMAL_TYPE_NAME, StringUtils.EMPTY)
-              .replaceAll("[()]", StringUtils.EMPTY)
-              .split(",");
-          ColumnTypeAttributes columnTypeAttributes = new ColumnTypeAttributesBuilder()
-              .precision(Integer.parseInt(decimal[0])).scale(Integer.parseInt(decimal[1])).build();
-          columnSchemaBuilder.typeAttributes(columnTypeAttributes);
-        }
-
-        ColumnSchema columnSchema = columnSchemaBuilder.build();
-        columns.add(columnSchema);
+      if (!client.tableExists(kuduTableName)) {
+        throw new MetaException("Tried to create external table on non-existing Kudu table");
       }
-
-      Schema schema = new Schema(columns);
-
-      CreateTableOptions createTableOptions = new CreateTableOptions();
-
-      // adding partitions
-      String[] partitionColumns = tbl.getParameters().get(HiveKuduConstants.PARTITION_COLUMNS).split("\\s*,\\s*");
-
-      for (String partitionColumn : partitionColumns) {
-        if (!keyColumns.contains(partitionColumn)) {
-          throw new MetaException("all partition columns need to be part of the key column!");
-        }
-
-        Integer numberBuckets;
-        if (tbl.getParameters().containsKey(HiveKuduConstants.BUCKETS_PREFIX + partitionColumn)) {
-          numberBuckets = Integer
-              .valueOf(tbl.getParameters().get(HiveKuduConstants.BUCKETS_PREFIX + partitionColumn));
-        } else {
-          numberBuckets = HiveKuduConstants.DEFAULT_NUM_BUCKETS;
-        }
-        createTableOptions.addHashPartitions(Collections.singletonList(partitionColumn), numberBuckets);
-      }
-
-      client.createTable(kuduTableName, schema, createTableOptions);
-
-    } catch (KuduException | SerDeException se) {
-      se.printStackTrace();
-      throw new MetaException("Error creating Kudu table: " + kuduTableName + ":" + se);
-    } finally {
-      try {
-        client.shutdown();
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
+      client.openTable(kuduTableName).getPartitionSchema();
+    } catch (KuduException e) {
+      throw new MetaException("Failed to connect to kudu" + e);
     }
   }
 
   @Override
   public void commitCreateTable(Table tbl) throws MetaException {
-
-    KuduClient client = HiveKuduBridgeUtils
-        .getKuduClient(conf, tbl.getParameters().get(HiveKuduConstants.MASTER_ADDRESS_NAME));
-    try {
-      if (!client.tableExists(getKuduTableName(tbl))) {
-        throw new MetaException("table did not exist after trying to create it.");
-      }
-    } catch (KuduException e) {
-      throw new MetaException("KuduException while checking if newly created table exists " + e);
-    } finally {
-      try {
-        client.shutdown();
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
+    // Nothing to do
   }
 
   @Override
   public void preDropTable(Table tbl) throws MetaException {
     // Nothing to do
-
   }
 
   @Override
   public void commitDropTable(Table tbl, boolean deleteData)
       throws MetaException {
-    KuduClient client = HiveKuduBridgeUtils
-        .getKuduClient(conf, tbl.getParameters().get(HiveKuduConstants.MASTER_ADDRESS_NAME));
-    String tablename = getKuduTableName(tbl);
-    boolean isExternal = MetaStoreUtils.isExternalTable(tbl);
-    try {
-      if (deleteData && !isExternal) {
-        client.deleteTable(tablename);
-      }
-    } catch (Exception ioe) {
-      throw new MetaException("Error dropping table:" + tablename);
-    } finally {
-      try {
-        client.shutdown();
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
+    // nothing to do. we will not delete the kudu table.
   }
 
   @Override
   public void rollbackCreateTable(Table tbl) throws MetaException {
-    KuduClient client = HiveKuduBridgeUtils
-        .getKuduClient(conf, tbl.getParameters().get(HiveKuduConstants.MASTER_ADDRESS_NAME));
-    String tablename = getKuduTableName(tbl);
-    boolean isExternal = MetaStoreUtils.isExternalTable(tbl);
-    try {
-      if (client.tableExists(tablename) && !isExternal) {
-        client.deleteTable(tablename);
-      }
-    } catch (Exception ioe) {
-      throw new MetaException("Error dropping table while rollback of create table:" + tablename);
-    } finally {
-      try {
-        client.shutdown();
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
+    // Nothing to do
   }
 
   @Override

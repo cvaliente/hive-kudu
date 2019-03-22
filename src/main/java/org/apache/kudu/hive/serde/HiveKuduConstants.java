@@ -38,12 +38,6 @@ public final class HiveKuduConstants {
     public static final String TABLE_NAME = KUDU_PROPERTY_PREFIX + "table_name";
     /**key columns */
     public static final String KEY_COLUMNS = KUDU_PROPERTY_PREFIX + "key_columns";
-    /**partition columns (a partition column must be part of the PK */
-    public static final String PARTITION_COLUMNS = KUDU_PROPERTY_PREFIX + "partition_columns";
-
-    /**number of buckets for each partitioning column */
-    public static final String BUCKETS_PREFIX = KUDU_PROPERTY_PREFIX + "buckets.for.";
-    public static final Integer DEFAULT_NUM_BUCKETS = 2;
 
 
     /** MapReduce Properties */
